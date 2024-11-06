@@ -1,23 +1,80 @@
-Hi ![](https://user-images.githubusercontent.com/18350557/176309783-0785949b-9127-417c-8b55-ab5a4333674e.gif)My name is Karamat Ali
-===================================================================================================================================
+# Karamat Ali
 
-WordPress and Shopify Developer
--------------------------------
+**WordPress | Shopify Developer**
 
-Hand on experience in web Development and Design. Well experienced in developing Shopify Store, working in Shopify partner account, WordPress Experienced in PPC and SEO, Email marketing. Well experienced in HTML, CSS, Bootstrap, jQuery & PHP
+📧 geotrixe@gmail.com  
+📱 +923004588711
 
-* 🌍  I'm based in Pakistan
-* ✉️  You can contact me at [geotrixe@gmail.com](mailto:geotrixe@gmail.com)
-* 🧠  I'm learning Wordpress plugin Development
+Experienced web developer specializing in **WordPress** and **Shopify**. Skilled in creating eCommerce solutions with hands-on expertise in **Shopify Liquid**, **HTML**, **CSS**, **Bootstrap**, **jQuery**, and **PHP**. Background in **PPC**, **SEO**, and **Email Marketing**, with extensive knowledge of **Magento 1 and 2**, **Figma to Template Conversion**, and **PSD to WordPress and Shopify templates**.
 
-### Skills
+---
 
+## 🛠️ Technical Skills
 
-<p align="left">
-<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript" target="_blank" rel="noreferrer"><img src="https://raw.githubusercontent.com/danielcranney/readme-generator/main/public/icons/skills/javascript-colored.svg" width="36" height="36" alt="JavaScript" /></a><a href="https://www.php.net/" target="_blank" rel="noreferrer"><img src="https://raw.githubusercontent.com/danielcranney/readme-generator/main/public/icons/skills/php-colored.svg" width="36" height="36" alt="PHP" /></a><a href="https://www.ruby-lang.org/en/" target="_blank" rel="noreferrer"><img src="https://raw.githubusercontent.com/danielcranney/readme-generator/main/public/icons/skills/ruby-colored.svg" width="36" height="36" alt="Ruby" /></a><a href="https://code.visualstudio.com/" target="_blank" rel="noreferrer"><img src="https://raw.githubusercontent.com/danielcranney/readme-generator/main/public/icons/skills/visualstudiocode.svg" width="36" height="36" alt="VS Code" /></a><a href="https://developer.mozilla.org/en-US/docs/Glossary/HTML5" target="_blank" rel="noreferrer"><img src="https://raw.githubusercontent.com/danielcranney/readme-generator/main/public/icons/skills/html5-colored.svg" width="36" height="36" alt="HTML5" /></a><a href="https://www.w3.org/TR/CSS/#css" target="_blank" rel="noreferrer"><img src="https://raw.githubusercontent.com/danielcranney/readme-generator/main/public/icons/skills/css3-colored.svg" width="36" height="36" alt="CSS3" /></a><a href="https://tailwindcss.com/" target="_blank" rel="noreferrer"><img src="https://raw.githubusercontent.com/danielcranney/readme-generator/main/public/icons/skills/tailwindcss-colored.svg" width="36" height="36" alt="TailwindCSS" /></a><a href="https://getbootstrap.com/" target="_blank" rel="noreferrer"><img src="https://raw.githubusercontent.com/danielcranney/readme-generator/main/public/icons/skills/bootstrap-colored.svg" width="36" height="36" alt="Bootstrap" /></a><a href="https://graphql.org/" target="_blank" rel="noreferrer"><img src="https://raw.githubusercontent.com/danielcranney/readme-generator/main/public/icons/skills/graphql-colored.svg" width="36" height="36" alt="GraphQL" /></a><a href="https://www.mysql.com/" target="_blank" rel="noreferrer"><img src="https://raw.githubusercontent.com/danielcranney/readme-generator/main/public/icons/skills/mysql-colored.svg" width="36" height="36" alt="MySQL" /></a><a href="https://www.figma.com/" target="_blank" rel="noreferrer"><img src="https://raw.githubusercontent.com/danielcranney/readme-generator/main/public/icons/skills/figma-colored.svg" width="36" height="36" alt="Figma" /></a><a href="https://wordpress.com" target="_blank" rel="noreferrer"><img src="https://raw.githubusercontent.com/danielcranney/readme-generator/main/public/icons/skills/wordpress-colored.svg" width="36" height="36" alt="Wordpress" /></a><a href="https://squarespace.com" target="_blank" rel="noreferrer"><img src="https://raw.githubusercontent.com/danielcranney/readme-generator/main/public/icons/skills/squarespace-colored.svg" width="36" height="36" alt="Squarespace" /></a><a href="https://wix.com" target="_blank" rel="noreferrer"><img src="https://raw.githubusercontent.com/danielcranney/readme-generator/main/public/icons/skills/wix-colored.svg" width="36" height="36" alt="Wix" /></a>
-</p>
+- **Languages/Technologies:** HTML, CSS, jQuery, Bootstrap, JavaScript, PHP
+- **Frameworks/Platforms:** Shopify Liquid, WordPress, Magento
+- **Design Tools:** Figma, Photoshop
+- **E-commerce:** Shopify Partner, WooCommerce
+- **Marketing/SEO:** PPC, SEO, Email Marketing
 
+---
 
-### Socials
+## 🌐 Professional Links
 
-<p align="left"> <a href="https://www.github.com/karamatali" target="_blank" rel="noreferrer"> <picture> <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/danielcranney/readme-generator/main/public/icons/socials/github-dark.svg" /> <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/danielcranney/readme-generator/main/public/icons/socials/github.svg" /> <img src="https://raw.githubusercontent.com/danielcranney/readme-generator/main/public/icons/socials/github.svg" width="32" height="32" /> </picture> </a> <a href="https://www.linkedin.com/in/karamat-ali-5369a9a0/" target="_blank" rel="noreferrer"> <picture> <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/danielcranney/readme-generator/main/public/icons/socials/linkedin-dark.svg" /> <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/danielcranney/readme-generator/main/public/icons/socials/linkedin.svg" /> <img src="https://raw.githubusercontent.com/danielcranney/readme-generator/main/public/icons/socials/linkedin.svg" width="32" height="32" /> </picture> </a></p>
+### Shopify Projects
+- [choputaeats.com](https://choputaeats.com)
+- [drinkrenude.com](https://drinkrenude.com)
+- [mfcoffroad.com](https://mfcoffroad.com)
+- [causeforelegance.com](https://causeforelegance.com)
+- [thediamondoak.com](https://thediamondoak.com)
+- [midvalebox.com](https://midvalebox.com)
+- [shopbeautyandthebabe.com](https://shopbeautyandthebabe.com)
+
+### WordPress Projects
+- [mdnewsline.com](https://mdnewsline.com)
+- [stockKonnect.co](https://stockKonnect.co)
+- [almuslimtravel.co.uk](https://almuslimtravel.co.uk)
+- [rytondental.com](https://rytondental.com)
+- [tanzeem.org](https://tanzeem.org)
+- [polarcream.com](https://polarcream.com)
+
+---
+
+## 💼 Work Experience
+
+**Senior Shopify Developer**  
+*09/2023 - Present | Mushrp, Lahore*  
+- Lead development on Shopify and WordPress projects.
+- Created high-quality, user-friendly eCommerce sites on Shopify.
+- Expertise in Shopify theme customization and advanced functionality.
+
+**Shopify Developer**  
+*09/2022 - 08/2023 | Napollo Software Design LLC, Lahore*  
+- Developed websites on Shopify, WordPress, Squarespace, WIX, and WebFlow.
+- Customized Shopify themes and implemented advanced features.
+- Strong focus on HTML, CSS, JavaScript integration with third-party services.
+
+**E-commerce Web Developer**  
+*08/2019 - 08/2022 | Cutting Edge Projects, UK*  
+- Developed eCommerce stores on Shopify Liquid, Magento 2, WooCommerce.
+- Managed social media ads, SEO, PPC, and performance reporting.
+- Provided continuous support, creating responsive and visually appealing designs.
+
+---
+
+## 🎓 Education
+
+**Master of Computer Science (MCS)**  
+*Lahore Garrison University*
+
+---
+
+### 👨‍💻 About Me
+
+Experienced in building robust, user-friendly eCommerce websites with **6+ years** in Shopify development and **proven expertise in theme customization**. Proficient in managing and optimizing digital marketing campaigns, SEO, and PPC to drive traffic and conversions. Well-versed in front-end and back-end development with a focus on creating seamless, engaging user experiences.
+
+---
+
+### 📫 Contact
+- **Email:** [geotrixe@gmail.com](mailto:geotrixe@gmail.com)
+- **Phone:** +923004588711
