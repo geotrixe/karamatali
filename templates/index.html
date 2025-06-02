@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Business Data Scraper</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css" rel="stylesheet">
+    <style>
+        .dark-mode {
+            background-color: #212529;
+            color: #f8f9fa;
+        }
+        .dark-mode .card {
+            background-color: #343a40;
+            color: #f8f9fa;
+        }
+        .dark-mode .table {
+            color: #f8f9fa;
+        }
+        .progress-wrapper {
+            display: none;
+        }
+        .loading .progress-wrapper {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container py-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="mb-0">Business Data Scraper</h1>
+            <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" id="darkModeToggle">
+                <label class="form-check-label" for="darkModeToggle">Dark Mode</label>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-body">
+                <form id="searchForm">
+                    <div class="row g-3">
+                        <div class="col-md-5">
+                            <input type="text" class="form-control" id="location" placeholder="Location (e.g., New York, NY)" required>
+                        </div>
+                        <div class="col-md-5">
+                            <input type="text" class="form-control" id="keyword" placeholder="Business Type (e.g., restaurants)" required>
+                        </div>
+                        <div class="col-md-2">
+                            <button type="submit" class="btn btn-primary w-100">Search</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="progress-wrapper mb-4">
+            <div class="progress" style="height: 25px;">
+                <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 100%">
+                    Searching and scraping data...
+                </div>
+            </div>
+        </div>
+
+        <ul class="nav nav-tabs mb-4" id="resultTabs" role="tablist">
+            <li class="nav-item">
+                <a class="nav-link active" id="all-tab" data-bs-toggle="tab" href="#all" role="tab">All Results</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" id="with-website-tab" data-bs-toggle="tab" href="#with-website" role="tab">With Website</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" id="without-website-tab" data-bs-toggle="tab" href="#without-website" role="tab">Without Website</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" id="with-email-tab" data-bs-toggle="tab" href="#with-email" role="tab">Emails Found</a>
+            </li>
+        </ul>
+
+        <div class="tab-content">
+            <div class="tab-pane fade show active" id="all" role="tabpanel">
+                <div class="table-responsive">
+                    <table class="table table-striped" id="resultsTable">
+                        <thead>
+                            <tr>
+                                <th>Business</th>
+                                <th>Address</th>
+                                <th>Website</th>
+                                <th>Emails</th>
+                                <th>Phone</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="tab-pane fade" id="with-website" role="tabpanel">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Business Name</th>
+                                <th>Address</th>
+                                <th>Website</th>
+                                <th>Emails</th>
+                                <th>Phone</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="tab-pane fade" id="without-website" role="tabpanel">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Business Name</th>
+                                <th>Address</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="tab-pane fade" id="with-email" role="tabpanel">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Business Name</th>
+                                <th>Website</th>
+                                <th>Emails</th>
+                                <th>Phone</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-end mt-4">
+            <button id="downloadBtn" class="btn btn-success" style="display: none;">
+                Download Results (CSV)
+            </button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    <script>
+        let businessData = [];
+
+        document.getElementById('darkModeToggle').addEventListener('change', function() {
+            document.body.classList.toggle('dark-mode');
+        });
+
+        document.getElementById('searchForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const location = document.getElementById('location').value;
+            const keyword = document.getElementById('keyword').value;
+            
+            document.body.classList.add('loading');
+            document.getElementById('downloadBtn').style.display = 'none';
+            
+            try {
+                const response = await fetch('/search', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token() }}'
+                    },
+                    body: JSON.stringify({ location, keyword })
+                });
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                businessData = data.businesses;
+                updateTables(businessData);
+                document.getElementById('downloadBtn').style.display = 'block';
+                
+                Toastify({
+                    text: "Search completed successfully!",
+                    duration: 3000,
+                    gravity: "top",
+                    position: "right",
+                    style: {
+                        background: "linear-gradient(to right, #00b09b, #96c93d)",
+                    }
+                }).showToast();
+                
+            } catch (error) {
+                Toastify({
+                    text: error.message || "An error occurred",
+                    duration: 3000,
+                    gravity: "top",
+                    position: "right",
+                    style: {
+                        background: "linear-gradient(to right, #ff5f6d, #ffc371)",
+                    }
+                }).showToast();
+            } finally {
+                document.body.classList.remove('loading');
+            }
+        });
+
+        function updateTables(data) {
+            // All results
+            updateTable('#all table tbody', data, business => `
+                <tr>
+                    <td>${business.name}</td>
+                    <td>${business.address}</td>
+                    <td>${business.website || 'N/A'}</td>
+                    <td>${business.emails.join(', ') || 'N/A'}</td>
+                    <td>${business.phone || 'N/A'}</td>
+                </tr>
+            `);
+
+            // With website
+            const withWebsite = data.filter(b => b.has_website);
+            updateTable('#with-website table tbody', withWebsite, business => `
+                <tr>
+                    <td>${business.name}</td>
+                    <td>${business.address}</td>
+                    <td>${business.website}</td>
+                    <td>${business.emails.join(', ') || 'N/A'}</td>
+                    <td>${business.phone || 'N/A'}</td>
+                </tr>
+            `);
+
+            // Without website
+            const withoutWebsite = data.filter(b => !b.has_website);
+            updateTable('#without-website table tbody', withoutWebsite, business => `
+                <tr>
+                    <td>${business.name}</td>
+                    <td>${business.address}</td>
+                    <td>${business.phone || 'N/A'}</td>
+                </tr>
+            `);
+
+            // With email
+            const withEmail = data.filter(b => b.emails.length > 0);
+            updateTable('#with-email table tbody', withEmail, business => `
+                <tr>
+                    <td>${business.name}</td>
+                    <td>${business.website}</td>
+                    <td>${business.emails.join(', ')}</td>
+                    <td>${business.phone || 'N/A'}</td>
+                </tr>
+            `);
+        }
+
+        function updateTable(selector, data, rowTemplate) {
+            const tbody = document.querySelector(selector);
+            tbody.innerHTML = data.map(rowTemplate).join('');
+        }
+
+        document.getElementById('downloadBtn').addEventListener('click', function() {
+            if (businessData.length === 0) return;
+            
+            const queryString = new URLSearchParams({
+                data: JSON.stringify(businessData)
+            }).toString();
+            
+            window.location.href = `/download-csv?${queryString}`;
+        });
+    </script>
+</body>
+</html> 
