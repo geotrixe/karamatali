@@ -4,8 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Business Data Scraper</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css" rel="stylesheet">
+    <!-- Load jQuery first -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Add Lightbox2 CSS and JS -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/lightbox2/2.11.3/css/lightbox.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lightbox2/2.11.3/js/lightbox-plus-jquery.min.js"></script>
     <style>
         .dark-mode {
             background-color: #212529;
@@ -18,257 +23,428 @@
         .dark-mode .table {
             color: #f8f9fa;
         }
-        .progress-wrapper {
-            display: none;
+        .screenshot-thumbnail {
+            max-width: 250px;
+            max-height: 150px;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: transform 0.2s, box-shadow 0.2s;
+            border: 2px solid #ddd;
+            object-fit: contain;
+            background: #fff;
+            padding: 5px;
         }
-        .loading .progress-wrapper {
+        .screenshot-thumbnail:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 15px rgba(0,0,0,0.3);
+        }
+        #resultsTable th {
+            white-space: nowrap;
+        }
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .spinner-container {
+            text-align: center;
+            color: white;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 10px;
+        }
+        .screenshot-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 1001;
+            overflow: auto;
+            padding: 20px;
+        }
+        .screenshot-content {
+            margin: 40px auto;
+            max-width: 95%;
+            position: relative;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            overflow: auto;
+            max-height: 90vh;
+        }
+        .screenshot-image {
+            width: 100%;
+            height: auto;
             display: block;
+            image-rendering: -webkit-optimize-contrast;
+            image-rendering: crisp-edges;
+            transform-origin: top left;
+        }
+        .close-button {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            color: white;
+            font-size: 30px;
+            cursor: pointer;
+            background: rgba(0, 0, 0, 0.5);
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1002;
+        }
+        .close-button:hover {
+            background: rgba(0, 0, 0, 0.8);
+        }
+        .dark-mode .screenshot-content {
+            background: #343a40;
+            color: #f8f9fa;
+        }
+        .zoom-controls {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px 25px;
+            border-radius: 25px;
+            z-index: 1002;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+        .zoom-button {
+            color: white;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 5px;
+            padding: 8px 15px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.2s;
+        }
+        .zoom-button:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+        .zoom-level {
+            color: white;
+            margin: 0 10px;
+            font-size: 14px;
+        }
+        .loading-indicator {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+            display: none;
         }
     </style>
 </head>
 <body>
     <div class="container py-4">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h1 class="mb-0">Business Data Scraper</h1>
-            <div class="form-check form-switch">
-                <input class="form-check-input" type="checkbox" id="darkModeToggle">
-                <label class="form-check-label" for="darkModeToggle">Dark Mode</label>
-            </div>
-        </div>
-
         <div class="card mb-4">
             <div class="card-body">
-                <form id="searchForm">
-                    <div class="row g-3">
-                        <div class="col-md-5">
-                            <input type="text" class="form-control" id="location" placeholder="Location (e.g., New York, NY)" required>
-                        </div>
-                        <div class="col-md-5">
-                            <input type="text" class="form-control" id="keyword" placeholder="Business Type (e.g., restaurants)" required>
-                        </div>
-                        <div class="col-md-2">
-                            <button type="submit" class="btn btn-primary w-100">Search</button>
-                        </div>
+                <h1 class="card-title text-center mb-4">Business Data Scraper</h1>
+                <form id="searchForm" class="row g-3">
+                    <div class="col-md-5">
+                        <input type="text" class="form-control" id="location" placeholder="Enter location" required>
+                    </div>
+                    <div class="col-md-5">
+                        <input type="text" class="form-control" id="keyword" placeholder="Enter business type" required>
+                    </div>
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-primary w-100">Search</button>
                     </div>
                 </form>
             </div>
         </div>
 
-        <div class="progress-wrapper mb-4">
-            <div class="progress" style="height: 25px;">
-                <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 100%">
-                    Searching and scraping data...
-                </div>
-            </div>
-        </div>
-
-        <ul class="nav nav-tabs mb-4" id="resultTabs" role="tablist">
-            <li class="nav-item">
-                <a class="nav-link active" id="all-tab" data-bs-toggle="tab" href="#all" role="tab">All Results</a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" id="with-website-tab" data-bs-toggle="tab" href="#with-website" role="tab">With Website</a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" id="without-website-tab" data-bs-toggle="tab" href="#without-website" role="tab">Without Website</a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" id="with-email-tab" data-bs-toggle="tab" href="#with-email" role="tab">Emails Found</a>
-            </li>
-        </ul>
-
-        <div class="tab-content">
-            <div class="tab-pane fade show active" id="all" role="tabpanel">
-                <div class="table-responsive">
-                    <table class="table table-striped" id="resultsTable">
-                        <thead>
-                            <tr>
-                                <th>Business</th>
-                                <th>Address</th>
-                                <th>Website</th>
-                                <th>Emails</th>
-                                <th>Phone</th>
-                            </tr>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
-                </div>
-            </div>
-            <div class="tab-pane fade" id="with-website" role="tabpanel">
-                <div class="table-responsive">
-                    <table class="table table-striped">
-                        <thead>
-                            <tr>
-                                <th>Business Name</th>
-                                <th>Address</th>
-                                <th>Website</th>
-                                <th>Emails</th>
-                                <th>Phone</th>
-                            </tr>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
-                </div>
-            </div>
-            <div class="tab-pane fade" id="without-website" role="tabpanel">
-                <div class="table-responsive">
-                    <table class="table table-striped">
-                        <thead>
-                            <tr>
-                                <th>Business Name</th>
-                                <th>Address</th>
-                            </tr>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
-                </div>
-            </div>
-            <div class="tab-pane fade" id="with-email" role="tabpanel">
-                <div class="table-responsive">
-                    <table class="table table-striped">
-                        <thead>
-                            <tr>
-                                <th>Business Name</th>
-                                <th>Website</th>
-                                <th>Emails</th>
-                                <th>Phone</th>
-                            </tr>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-        <div class="text-end mt-4">
-            <button id="downloadBtn" class="btn btn-success" style="display: none;">
-                Download Results (CSV)
+        <div class="mb-3">
+            <button id="darkModeToggle" class="btn btn-outline-secondary">
+                <i class="bi bi-moon"></i> Toggle Dark Mode
             </button>
+            <button id="downloadCsv" class="btn btn-success" style="display: none;">
+                <i class="bi bi-download"></i> Download CSV
+            </button>
+        </div>
+
+        <div class="table-responsive">
+            <table id="resultsTable" class="table table-striped" style="display: none;">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Website</th>
+                        <th>Address</th>
+                        <th>Phone</th>
+                        <th>Screenshot</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    <div class="loading-overlay">
+        <div class="spinner-container">
+            <div class="spinner-border text-light" role="status"></div>
+            <p class="mt-2">Loading results...</p>
+            <p class="progress-text"></p>
+        </div>
+    </div>
+
+    <div id="screenshotModal" class="screenshot-modal">
+        <button class="close-button">&times;</button>
+        <div class="screenshot-content">
+            <img class="screenshot-image" src="" alt="Full screenshot">
+        </div>
+        <div class="zoom-controls">
+            <button class="zoom-button" data-zoom="out">−</button>
+            <button class="zoom-button" data-zoom="reset">100%</button>
+            <button class="zoom-button" data-zoom="in">+</button>
+            <span class="zoom-level">100%</span>
+        </div>
+        <div class="loading-indicator">
+            Loading high-quality screenshot...
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        let businessData = [];
+        document.addEventListener('DOMContentLoaded', function() {
+            const searchForm = document.getElementById('searchForm');
+            const resultsTable = document.getElementById('resultsTable');
+            const downloadBtn = document.getElementById('downloadCsv');
+            const darkModeToggle = document.getElementById('darkModeToggle');
+            const loadingOverlay = document.querySelector('.loading-overlay');
+            const progressText = document.querySelector('.progress-text');
+            const modal = document.getElementById('screenshotModal');
+            const modalImg = modal.querySelector('.screenshot-image');
+            const closeBtn = modal.querySelector('.close-button');
+            const zoomControls = document.querySelector('.zoom-controls');
+            const zoomLevel = document.querySelector('.zoom-level');
+            const loadingIndicator = document.querySelector('.loading-indicator');
+            let currentZoom = 1;
 
-        document.getElementById('darkModeToggle').addEventListener('change', function() {
-            document.body.classList.toggle('dark-mode');
-        });
-
-        document.getElementById('searchForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            const location = document.getElementById('location').value;
-            const keyword = document.getElementById('keyword').value;
-            
-            document.body.classList.add('loading');
-            document.getElementById('downloadBtn').style.display = 'none';
-            
-            try {
-                const response = await fetch('/search', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': '{{ csrf_token() }}'
-                    },
-                    body: JSON.stringify({ location, keyword })
+            // Initialize lightbox with jQuery
+            $(document).ready(function() {
+                lightbox.option({
+                    'resizeDuration': 200,
+                    'wrapAround': true,
+                    'maxWidth': '90%',
+                    'maxHeight': '90%',
+                    'fitImagesInViewport': false,
+                    'showImageNumberLabel': true,
+                    'disableScrolling': false,
+                    'positionFromTop': 50,
+                    'alwaysShowNavOnTouchDevices': true
                 });
-                
-                const data = await response.json();
-                
-                if (data.error) {
-                    throw new Error(data.error);
+            });
+
+            // Dark mode toggle
+            darkModeToggle.addEventListener('click', function() {
+                document.body.classList.toggle('dark-mode');
+                const icon = darkModeToggle.querySelector('i');
+                icon.classList.toggle('bi-moon');
+                icon.classList.toggle('bi-sun');
+            });
+
+            // Close modal
+            closeBtn.onclick = function() {
+                modal.style.display = "none";
+            }
+            window.onclick = function(event) {
+                if (event.target == modal) {
+                    modal.style.display = "none";
+                }
+            }
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && modal.style.display === 'block') {
+                    modal.style.display = "none";
+                }
+            });
+
+            // Zoom controls with smooth transitions
+            zoomControls.addEventListener('click', function(e) {
+                const button = e.target.closest('.zoom-button');
+                if (!button) return;
+
+                const action = button.dataset.zoom;
+                switch(action) {
+                    case 'in':
+                        currentZoom = Math.min(currentZoom * 1.25, 5);
+                        break;
+                    case 'out':
+                        currentZoom = Math.max(currentZoom / 1.25, 0.25);
+                        break;
+                    case 'reset':
+                        currentZoom = 1;
+                        break;
                 }
                 
-                businessData = data.businesses;
-                updateTables(businessData);
-                document.getElementById('downloadBtn').style.display = 'block';
-                
-                Toastify({
-                    text: "Search completed successfully!",
-                    duration: 3000,
-                    gravity: "top",
-                    position: "right",
-                    style: {
-                        background: "linear-gradient(to right, #00b09b, #96c93d)",
+                modalImg.style.transform = `scale(${currentZoom})`;
+                zoomLevel.textContent = `${Math.round(currentZoom * 100)}%`;
+            });
+
+            // Add mouse wheel zoom support
+            modal.addEventListener('wheel', function(e) {
+                if (e.ctrlKey) {
+                    e.preventDefault();
+                    const delta = e.deltaY > 0 ? 0.9 : 1.1;
+                    currentZoom = Math.max(0.25, Math.min(5, currentZoom * delta));
+                    modalImg.style.transform = `scale(${currentZoom})`;
+                    zoomLevel.textContent = `${Math.round(currentZoom * 100)}%`;
+                }
+            });
+
+            searchForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                const location = document.getElementById('location').value;
+                const keyword = document.getElementById('keyword').value;
+
+                loadingOverlay.style.display = 'flex';
+                progressText.textContent = 'Searching for businesses...';
+                resultsTable.style.display = 'none';
+                downloadBtn.style.display = 'none';
+
+                try {
+                    const response = await fetch('/search', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({ 
+                            location: location.trim(), 
+                            keyword: keyword.trim() 
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (!response.ok || data.error) {
+                        throw new Error(data.error || `Server error: ${response.status}`);
                     }
-                }).showToast();
-                
-            } catch (error) {
-                Toastify({
-                    text: error.message || "An error occurred",
-                    duration: 3000,
-                    gravity: "top",
-                    position: "right",
-                    style: {
-                        background: "linear-gradient(to right, #ff5f6d, #ffc371)",
+
+                    if (!data.businesses || data.businesses.length === 0) {
+                        throw new Error('No businesses found');
                     }
-                }).showToast();
-            } finally {
-                document.body.classList.remove('loading');
+
+                    const tbody = resultsTable.querySelector('tbody');
+                    tbody.innerHTML = '';
+
+                    data.businesses.forEach((business, index) => {
+                        progressText.textContent = `Processing business ${index + 1} of ${data.businesses.length}...`;
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${business.name || '-'}</td>
+                            <td>${business.website ? `<a href="${business.website}" target="_blank">${business.website}</a>` : '-'}</td>
+                            <td>${business.address || '-'}</td>
+                            <td>${business.phone || '-'}</td>
+                            <td>${business.screenshot ? 
+                                `<img src="data:image/png;base64,${business.screenshot.thumbnail}" 
+                                     class="screenshot-thumbnail" 
+                                     data-full="data:image/png;base64,${business.screenshot.full}"
+                                     data-dimensions='${JSON.stringify(business.screenshot.dimensions)}'
+                                     alt="Screenshot of ${business.name}"
+                                     title="Click to view full screenshot">` : 
+                                '-'}</td>
+                        `;
+                        tbody.appendChild(row);
+                    });
+
+                    // Add click handlers for screenshots
+                    tbody.querySelectorAll('.screenshot-thumbnail').forEach(thumb => {
+                        thumb.addEventListener('click', function() {
+                            currentZoom = 1;
+                            modalImg.style.transform = '';
+                            zoomLevel.textContent = '100%';
+                            
+                            // Show loading indicator
+                            loadingIndicator.style.display = 'block';
+                            modal.style.display = 'block';
+                            
+                            // Load the image
+                            const img = new Image();
+                            img.onload = function() {
+                                modalImg.src = thumb.dataset.full;
+                                loadingIndicator.style.display = 'none';
+                                
+                                // Set modal content size
+                                const dimensions = JSON.parse(thumb.dataset.dimensions);
+                                const viewportHeight = window.innerHeight - 120;
+                                const contentHeight = Math.min(dimensions.height, viewportHeight);
+                                modal.querySelector('.screenshot-content').style.maxHeight = `${contentHeight}px`;
+                            };
+                            img.src = thumb.dataset.full;
+                        });
+                    });
+
+                    resultsTable.style.display = 'table';
+                    downloadBtn.style.display = 'inline-block';
+                    window.searchResults = data.businesses;
+
+                    // Show completion message
+                    if (data.screenshots_completed < data.total_businesses) {
+                        alert(`Note: ${data.screenshots_completed} out of ${data.total_businesses} screenshots were captured successfully. Some websites may not allow screenshots.`);
+                    }
+
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert(error.message || 'An error occurred while fetching results');
+                } finally {
+                    loadingOverlay.style.display = 'none';
+                }
+            });
+
+            // Download CSV functionality
+            downloadBtn.addEventListener('click', function() {
+                if (!window.searchResults) return;
+
+                const csvContent = convertToCSV(window.searchResults);
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement('a');
+                const url = URL.createObjectURL(blob);
+                link.setAttribute('href', url);
+                link.setAttribute('download', `business_data_${new Date().toISOString().slice(0,19).replace(/:/g, '-')}.csv`);
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            });
+
+            function convertToCSV(data) {
+                const headers = ['Name', 'Website', 'Address', 'Phone'];
+                const rows = data.map(item => [
+                    item.name || '',
+                    item.website || '',
+                    item.address || '',
+                    item.phone || ''
+                ]);
+                return [headers, ...rows]
+                    .map(row => row.map(cell => `"${cell.replace(/"/g, '""')}"`).join(','))
+                    .join('\n');
             }
-        });
-
-        function updateTables(data) {
-            // All results
-            updateTable('#all table tbody', data, business => `
-                <tr>
-                    <td>${business.name}</td>
-                    <td>${business.address}</td>
-                    <td>${business.website || 'N/A'}</td>
-                    <td>${business.emails.join(', ') || 'N/A'}</td>
-                    <td>${business.phone || 'N/A'}</td>
-                </tr>
-            `);
-
-            // With website
-            const withWebsite = data.filter(b => b.has_website);
-            updateTable('#with-website table tbody', withWebsite, business => `
-                <tr>
-                    <td>${business.name}</td>
-                    <td>${business.address}</td>
-                    <td>${business.website}</td>
-                    <td>${business.emails.join(', ') || 'N/A'}</td>
-                    <td>${business.phone || 'N/A'}</td>
-                </tr>
-            `);
-
-            // Without website
-            const withoutWebsite = data.filter(b => !b.has_website);
-            updateTable('#without-website table tbody', withoutWebsite, business => `
-                <tr>
-                    <td>${business.name}</td>
-                    <td>${business.address}</td>
-                    <td>${business.phone || 'N/A'}</td>
-                </tr>
-            `);
-
-            // With email
-            const withEmail = data.filter(b => b.emails.length > 0);
-            updateTable('#with-email table tbody', withEmail, business => `
-                <tr>
-                    <td>${business.name}</td>
-                    <td>${business.website}</td>
-                    <td>${business.emails.join(', ')}</td>
-                    <td>${business.phone || 'N/A'}</td>
-                </tr>
-            `);
-        }
-
-        function updateTable(selector, data, rowTemplate) {
-            const tbody = document.querySelector(selector);
-            tbody.innerHTML = data.map(rowTemplate).join('');
-        }
-
-        document.getElementById('downloadBtn').addEventListener('click', function() {
-            if (businessData.length === 0) return;
-            
-            const queryString = new URLSearchParams({
-                data: JSON.stringify(businessData)
-            }).toString();
-            
-            window.location.href = `/download-csv?${queryString}`;
         });
     </script>
 </body>

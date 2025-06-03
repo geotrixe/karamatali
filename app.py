@@ -1,6 +1,17 @@
 from flask import Flask, render_template, request, jsonify, send_file
-from flask_wtf.csrf import CSRFProtect
+from flask_wtf.csrf import CSRFProtect, generate_csrf
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.by import By
+from webdriver_manager.chrome import ChromeDriverManager
+import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import requests
+from requests.adapters import HTTPAdapter
+from requests.packages.urllib3.util.retry import Retry
 from bs4 import BeautifulSoup
 import re
 import pandas as pd
@@ -11,9 +22,11 @@ import json
 from urllib.parse import urlparse, quote, urljoin, unquote
 import io
 import time
-from concurrent.futures import ThreadPoolExecutor
-from requests.adapters import HTTPAdapter
-from requests.packages.urllib3.util.retry import Retry
+import base64
+from PIL import Image, ImageEnhance
+
+# Initialize thread_local storage
+thread_local = threading.local()
 
 # Load environment variables
 load_dotenv()
@@ -25,6 +38,7 @@ if api_key:
 else:
     print("Warning: No API key found in .env file")
 
+# Initialize Flask app
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-secret-key-here')
 csrf = CSRFProtect(app)
@@ -34,6 +48,98 @@ session = requests.Session()
 retries = Retry(total=3, backoff_factor=0.1, status_forcelist=[500, 502, 503, 504])
 session.mount('http://', HTTPAdapter(max_retries=retries))
 session.mount('https://', HTTPAdapter(max_retries=retries))
+
+def get_driver():
+    """Initialize and return a Chrome WebDriver instance."""
+    try:
+        if not hasattr(thread_local, "driver"):
+            print("Initializing Chrome WebDriver...")
+            chrome_options = Options()
+            chrome_options.add_argument("--headless")
+            chrome_options.add_argument("--no-sandbox")
+            chrome_options.add_argument("--disable-dev-shm-usage")
+            chrome_options.add_argument("--disable-gpu")
+            chrome_options.add_argument("--window-size=1920,1080")
+            
+            try:
+                service = Service(ChromeDriverManager().install())
+                driver = webdriver.Chrome(service=service, options=chrome_options)
+                driver.set_page_load_timeout(30)
+                thread_local.driver = driver
+                print("Chrome WebDriver initialized successfully")
+            except Exception as e:
+                print(f"Failed to initialize Chrome WebDriver: {str(e)}")
+                raise
+        return thread_local.driver
+    except Exception as e:
+        print(f"Error in get_driver: {str(e)}")
+        raise
+
+def capture_screenshot(url):
+    """Capture screenshot of a website."""
+    if not url:
+        return None
+        
+    print(f"\nAttempting to capture screenshot for: {url}")
+    driver = None
+    
+    try:
+        # Ensure screenshots directory exists
+        os.makedirs('screenshots', exist_ok=True)
+        
+        # Get driver
+        driver = get_driver()
+        
+        try:
+            print(f"Navigating to URL: {url}")
+            driver.get(url)
+            time.sleep(2)  # Wait for page load
+            
+            print("Taking screenshot...")
+            screenshot = driver.get_screenshot_as_png()
+            
+            if not screenshot:
+                print("Screenshot capture returned None")
+                return None
+                
+            print("Processing screenshot...")
+            img = Image.open(io.BytesIO(screenshot))
+            
+            # Save screenshot
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"screenshots/{urlparse(url).netloc}_{timestamp}.png"
+            img.save(filename, format='PNG', optimize=True, quality=95)
+            print(f"Screenshot saved to: {filename}")
+            
+            # Create thumbnail
+            thumb = img.copy()
+            thumb.thumbnail((200, 200))
+            
+            # Convert to base64
+            print("Converting to base64...")
+            full_buffer = io.BytesIO()
+            thumb_buffer = io.BytesIO()
+            
+            img.save(full_buffer, format='PNG', optimize=True, quality=95)
+            thumb.save(thumb_buffer, format='PNG', optimize=True, quality=85)
+            
+            base64_screenshot = base64.b64encode(full_buffer.getvalue()).decode('utf-8')
+            base64_thumbnail = base64.b64encode(thumb_buffer.getvalue()).decode('utf-8')
+            
+            print("Screenshot processing completed successfully")
+            return {
+                'full': base64_screenshot,
+                'thumbnail': base64_thumbnail,
+                'filename': filename
+            }
+            
+        except Exception as e:
+            print(f"Error capturing screenshot: {str(e)}")
+            return None
+            
+    except Exception as e:
+        print(f"Error in capture_screenshot: {str(e)}")
+        return None
 
 def get_contact_links(soup, base_url):
     """Extract potential contact page links."""
@@ -189,113 +295,150 @@ def clean_website_url(url):
 
 def search_places(location, keyword, page_token=None):
     """Search places using Places API v2."""
-    # First, get location coordinates using Geocoding API
-    geocode_url = f"https://maps.googleapis.com/maps/api/geocode/json?address={quote(location)}&key={os.getenv('GOOGLE_PLACES_API_KEY')}"
-    
     try:
-        geocode_response = requests.get(geocode_url)
-        geocode_response.raise_for_status()
-        geocode_data = geocode_response.json()
-        
-        if not geocode_data.get('results'):
+        # Check if API key is available
+        api_key = os.getenv('GOOGLE_PLACES_API_KEY')
+        if not api_key:
+            print("Error: Google Places API key not found in environment variables")
             return None
-            
-        location_data = geocode_data['results'][0]['geometry']['location']
-        center_lat, center_lng = location_data['lat'], location_data['lng']
+
+        print(f"\n=== Starting search for '{keyword}' in '{location}' ===")
         
-        # Define multiple search points around the center location
-        radius = 50000  # 5km radius
-        search_points = [
-            (center_lat, center_lng),  # Center
-            (center_lat + 0.05, center_lng),  # North
-            (center_lat - 0.05, center_lng),  # South
-            (center_lat, center_lng + 0.05),  # East
-            (center_lat, center_lng - 0.05),  # West
-        ]
+        # First, get location coordinates using Geocoding API
+        geocode_url = f"https://maps.googleapis.com/maps/api/geocode/json?address={quote(location)}&key={api_key}"
         
-        all_results = []
-        seen_place_ids = set()
-        
-        # Search places using Places API v2 for each point
-        for lat, lng in search_points:
-            search_url = "https://places.googleapis.com/v1/places:searchText"
-            headers = {
-                "Content-Type": "application/json",
-                "X-Goog-Api-Key": os.getenv('GOOGLE_PLACES_API_KEY'),
-                "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.websiteUri,places.internationalPhoneNumber,places.nationalPhoneNumber,nextPageToken"
-            }
+        try:
+            geocode_response = requests.get(geocode_url)
+            geocode_response.raise_for_status()
+            geocode_data = geocode_response.json()
             
-            data = {
-                "textQuery": f"{keyword} in {location}",
-                "locationBias": {
-                    "circle": {
-                        "center": {
-                            "latitude": lat,
-                            "longitude": lng
-                        },
-                        "radius": float(radius)
-                    }
-                },
-                "maxResultCount": 300
-            }
+            if not geocode_data.get('results'):
+                print(f"No geocoding results found for location: {location}")
+                print(f"Geocoding API response: {geocode_data}")
+                return None
+                
+            location_data = geocode_data['results'][0]['geometry']['location']
+            center_lat, center_lng = location_data['lat'], location_data['lng']
+            print(f"Found coordinates: {center_lat}, {center_lng}")
             
-            if page_token:
-                data["pageToken"] = page_token
+            # Define search points around the center location
+            radius = 5000  # 5km radius
+            search_points = [
+                (center_lat, center_lng),  # Center
+                (center_lat + 0.05, center_lng),  # North
+                (center_lat - 0.05, center_lng),  # South
+                (center_lat, center_lng + 0.05),  # East
+                (center_lat, center_lng - 0.05),  # West
+            ]
             
-            try:
-                response = requests.post(search_url, headers=headers, json=data)
-                if response.status_code != 200:
-                    print(f"Places API Error for point ({lat}, {lng}): {response.status_code}")
-                    print(f"Response: {response.text}")
-                    continue
+            all_results = []
+            seen_place_ids = set()
+            
+            # Search places using Places API v2 for each point
+            for lat, lng in search_points:
+                search_url = "https://places.googleapis.com/v1/places:searchText"
+                headers = {
+                    "Content-Type": "application/json",
+                    "X-Goog-Api-Key": api_key,
+                    "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.websiteUri,places.internationalPhoneNumber,places.nationalPhoneNumber"
+                }
                 
-                result = response.json()
+                data = {
+                    "textQuery": f"{keyword} in {location}",
+                    "locationBias": {
+                        "circle": {
+                            "center": {
+                                "latitude": lat,
+                                "longitude": lng
+                            },
+                            "radius": float(radius)
+                        }
+                    },
+                    "maxResultCount": 5
+                }
                 
-                # Add unique places to results
-                if 'places' in result:
-                    for place in result['places']:
-                        if place.get('id') not in seen_place_ids:
-                            seen_place_ids.add(place.get('id'))
-                            all_results.append(place)
+                if page_token:
+                    data["pageToken"] = page_token
                 
-                # Handle pagination if available
-                if 'nextPageToken' in result and len(all_results) < 100:
-                    time.sleep(2)  # Wait before making the next request
-                    next_page_results = search_places(location, keyword, result['nextPageToken'])
-                    if next_page_results and 'places' in next_page_results:
-                        for place in next_page_results['places']:
+                try:
+                    print(f"\nMaking Places API request for coordinates: {lat}, {lng}")
+                    print(f"Request data: {json.dumps(data, indent=2)}")
+                    
+                    response = requests.post(search_url, headers=headers, json=data)
+                    print(f"Response status code: {response.status_code}")
+                    
+                    if response.status_code != 200:
+                        print(f"Places API Error for point ({lat}, {lng}): {response.status_code}")
+                        print(f"Error response: {response.text}")
+                        continue
+                    
+                    result = response.json()
+                    
+                    # Add unique places to results
+                    if 'places' in result:
+                        print(f"Found {len(result['places'])} places at this point")
+                        for place in result['places']:
                             if place.get('id') not in seen_place_ids:
                                 seen_place_ids.add(place.get('id'))
                                 all_results.append(place)
+                    else:
+                        print("No places found in the response")
+                        print(f"Response content: {json.dumps(result, indent=2)}")
+                    
+                except requests.exceptions.RequestException as e:
+                    print(f"Request error at point ({lat}, {lng}): {str(e)}")
+                    if hasattr(e, 'response') and e.response is not None:
+                        print(f"Error response: {e.response.text}")
+                    continue
+                except Exception as e:
+                    print(f"Unexpected error at point ({lat}, {lng}): {str(e)}")
+                    continue
                 
-            except Exception as e:
-                print(f"Error searching at point ({lat}, {lng}): {str(e)}")
-                continue
+                time.sleep(1)  # Wait between requests to different points
             
-            time.sleep(1)  # Wait between requests to different points
-        
-        return {"places": all_results[:500]}  # Return up to 100 unique results
-        
+            print(f"\nTotal unique results found: {len(all_results)}")
+            return {"places": all_results}  # Return all unique results
+            
+        except requests.exceptions.RequestException as e:
+            print(f"Geocoding API request error: {str(e)}")
+            if hasattr(e, 'response') and e.response is not None:
+                print(f"Error response: {e.response.text}")
+            return None
+            
     except Exception as e:
-        print(f"Error searching places: {str(e)}")
-        if isinstance(e, requests.exceptions.RequestException) and e.response:
-            print(f"Response: {e.response.text}")
+        print(f"Unexpected error in search_places: {str(e)}")
+        import traceback
+        print(f"Traceback: {traceback.format_exc()}")
         return None
 
 @app.route('/')
 def index():
     return render_template('index.html')
 
+@app.route('/get-csrf-token')
+def get_csrf_token():
+    token = generate_csrf()
+    return jsonify({'csrf_token': token})
+
 @app.route('/search', methods=['POST'])
+@csrf.exempt
 def search():
-    data = request.get_json()
-    location = data.get('location')
-    keyword = data.get('keyword')
-    
-    if not location or not keyword:
-        return jsonify({'error': 'Location and keyword are required'}), 400
-    
     try:
+        if not request.is_json:
+            return jsonify({'error': 'Content-Type must be application/json'}), 400
+
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+            
+        location = data.get('location')
+        keyword = data.get('keyword')
+        
+        if not location or not keyword:
+            return jsonify({'error': 'Location and keyword are required'}), 400
+        
+        print(f"\nProcessing search request for {keyword} in {location}")
+        
         # Search for places
         places_result = search_places(location, keyword)
         if not places_result:
@@ -303,34 +446,60 @@ def search():
         
         businesses = []
         
-        # Process places
+        # Process places without screenshots first
         for place in places_result.get('places', []):
-            business = {
-                'name': place.get('displayName', {}).get('text', ''),
-                'website': clean_website_url(place.get('websiteUri', '')),
-                'address': place.get('formattedAddress', ''),
-                'has_website': bool(place.get('websiteUri')),
-                'phone': place.get('internationalPhoneNumber', '') or place.get('nationalPhoneNumber', ''),
-                'emails': []
-            }
-            
-            # Uncomment these lines to enable email scraping
-            # if business['website']:
-            #     business['emails'] = extract_emails(business['website'])
-            
-            businesses.append(business)
+            try:
+                business = {
+                    'name': place.get('displayName', {}).get('text', ''),
+                    'website': clean_website_url(place.get('websiteUri', '')),
+                    'address': place.get('formattedAddress', ''),
+                    'phone': place.get('internationalPhoneNumber', '') or place.get('nationalPhoneNumber', ''),
+                    'screenshot': None
+                }
+                businesses.append(business)
+                print(f"Added business: {business['name']} ({business['website']})")
+            except Exception as e:
+                print(f"Error processing place: {str(e)}")
+                continue
         
-        if not businesses:
-            return jsonify({'error': 'No businesses found'}), 404
-            
+        # Process screenshots sequentially
+        businesses_with_websites = [b for b in businesses if b['website']]
+        completed_screenshots = 0
+        
+        print(f"\nProcessing screenshots for {len(businesses_with_websites)} businesses with websites")
+        
+        for business in businesses_with_websites:
+            try:
+                screenshot = capture_screenshot(business['website'])
+                if screenshot:
+                    business['screenshot'] = screenshot
+                    completed_screenshots += 1
+                    print(f"Screenshot captured successfully for {business['website']}")
+                else:
+                    print(f"Failed to capture screenshot for {business['website']}")
+            except Exception as e:
+                print(f"Error capturing screenshot for {business['website']}: {str(e)}")
+        
+        print(f"\nCompleted processing {completed_screenshots} screenshots out of {len(businesses_with_websites)} websites")
+        
         return jsonify({
             'success': True,
-            'businesses': businesses
+            'businesses': businesses,
+            'screenshots_completed': completed_screenshots,
+            'total_businesses': len(businesses)
         })
         
     except Exception as e:
         print(f"Search error: {str(e)}")
         return jsonify({'error': str(e)}), 500
+
+@app.errorhandler(400)
+def bad_request(e):
+    return jsonify({'error': 'Bad Request'}), 400
+
+@app.errorhandler(500)
+def internal_error(e):
+    return jsonify({'error': 'Internal Server Error'}), 500
 
 @app.route('/download-csv')
 def download_csv():
@@ -353,5 +522,21 @@ def download_csv():
         download_name=f'business_data_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
     )
 
+@app.teardown_appcontext
+def cleanup(exception=None):
+    """Clean up resources when the application context ends."""
+    if hasattr(thread_local, "driver"):
+        try:
+            thread_local.driver.quit()
+            print("WebDriver cleaned up successfully")
+        except Exception as e:
+            print(f"Error cleaning up WebDriver: {str(e)}")
+        finally:
+            thread_local.driver = None
+
 if __name__ == '__main__':
-    app.run(debug=True)
+    try:
+        app.run(debug=True)
+    finally:
+        # Ensure cleanup on application exit
+        cleanup()
